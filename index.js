@@ -14,6 +14,8 @@ const {
   VoiceConnectionStatus,
   entersState,
 } = require("@discordjs/voice");
+const { request } = require("undici");
+const { Readable } = require("stream");
 const googleTTS = require("google-tts-api");
 require("dotenv").config();
 
@@ -59,11 +61,18 @@ const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
   }
 })();
 
-// Hàm tạo TTS audio URL
+// Hàm tạo TTS audio buffer
 async function createTTSAudio(text) {
   try {
     const audioUrl = await googleTTS(text, "vi", 1);
-    return audioUrl;
+    // Tải xuống trực tiếp để tránh ffmpeg treo khi stream qua mạng
+    const { body } = await request(audioUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    });
+    const arrayBuffer = await body.arrayBuffer();
+    return Buffer.from(arrayBuffer);
   } catch (error) {
     console.error("Lỗi khi tạo TTS:", error);
     throw error;
@@ -114,7 +123,7 @@ async function joinChannel(voiceChannel, guildId, adapterCreator) {
 }
 
 // Hàm phát audio trong voice channel
-async function playTTS(connection, audioUrl) {
+async function playTTS(connection, audioBuffer) {
   try {
     console.log("Đang phát TTS...");
 
@@ -129,11 +138,12 @@ async function playTTS(connection, audioUrl) {
     const subscription = connection.subscribe(player);
     console.log("Subscribed:", !!subscription);
 
-    // Tạo audio resource từ URL
-    const resource = createAudioResource(audioUrl, {
+    // Tạo audio resource từ Buffer stream thay vì URL để tránh kẹt Ffmpeg
+    const stream = Readable.from(audioBuffer);
+    const resource = createAudioResource(stream, {
       inlineVolume: true,
     });
-    console.log("Playing from:", audioUrl);
+    console.log("Created resource from downloaded buffer");
 
     // Tăng volume
     if (resource.volume) {
