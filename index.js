@@ -103,7 +103,7 @@ async function joinChannel(voiceChannel, guildId, adapterCreator) {
 
   // Đợi connection ready
   try {
-    await entersState(connection, VoiceConnectionStatus.Ready, 5000);
+    await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
     console.log("Voice connection ready!");
   } catch (error) {
     console.error("Connection timeout:", error);
@@ -119,7 +119,7 @@ async function playTTS(connection, audioUrl) {
     console.log("Đang phát TTS...");
 
     // Đảm bảo connection ready trước khi phát
-    await entersState(connection, VoiceConnectionStatus.Ready, 5000);
+    await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
     console.log("Connection ready, bắt đầu phát audio");
 
     // Tạo player
